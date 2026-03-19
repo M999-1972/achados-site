@@ -117,20 +117,23 @@ let buscas = [
 ];
 
 let indexBusca = 0;
+let carregando = false;
 
 // função principal
 async function buscar(termo = "promoções") {
 
+  if (carregando) return; // evita travar
+  carregando = true;
+
   document.getElementById("produtos").innerHTML = "Carregando...";
 
   try {
-
     let res = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${termo}`);
-
     let data = await res.json();
 
     if (!data.results || data.results.length === 0) {
       document.getElementById("produtos").innerHTML = "Nenhum produto encontrado";
+      carregando = false;
       return;
     }
 
@@ -157,6 +160,8 @@ async function buscar(termo = "promoções") {
     document.getElementById("produtos").innerHTML =
       "Erro ao carregar. Tentando novamente...";
   }
+
+  carregando = false;
 }
 
 // botão
@@ -165,14 +170,21 @@ function buscarClick() {
   buscar(termo || "promoções");
 }
 
-// 🔁 rotação automática (MAIS LENTA E ESTÁVEL)
-setInterval(() => {
-  buscar(buscas[indexBusca]);
-  indexBusca = (indexBusca + 1) % buscas.length;
-}, 30000); // 30 segundos
+// 🔁 ROTAÇÃO CORRETA (EM LOOP CONTROLADO)
+async function rotacaoAutomatica() {
+  while (true) {
+    await buscar(buscas[indexBusca]);
+
+    indexBusca = (indexBusca + 1) % buscas.length;
+
+    // espera 20s ANTES da próxima busca
+    await new Promise(r => setTimeout(r, 20000));
+  }
+}
 
 // iniciar
 buscar();
+rotacaoAutomatica();
 
 </script>
 
