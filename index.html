@@ -22,12 +22,7 @@ header {
   background: red;
   color: white;
   padding: 8px;
-  font-size: 14px;
   text-align: center;
-}
-
-.search-box {
-  margin-top: 10px;
 }
 
 input {
@@ -43,7 +38,6 @@ button {
   color: white;
   border: none;
   border-radius: 5px;
-  cursor: pointer;
 }
 
 .container {
@@ -81,11 +75,6 @@ button {
 .price {
   color: green;
   font-weight: bold;
-  font-size: 18px;
-}
-
-.rating {
-  color: orange;
 }
 
 .link {
@@ -96,7 +85,6 @@ button {
   color: white;
   text-decoration: none;
   border-radius: 5px;
-  font-weight: bold;
 }
 </style>
 </head>
@@ -104,149 +92,87 @@ button {
 <body>
 
 <header>
-  <h1>🔥 TOP OFERTAS DO DIA</h1>
-
-  <div class="search-box">
-    <input 
-      type="text" 
-      id="busca" 
-      placeholder="Buscar produtos..."
-      onkeypress="if(event.key==='Enter'){buscarClick()}"
-    >
-    <button onclick="buscarClick()">Buscar</button>
-  </div>
+  <h1>🔥 TOP OFERTAS</h1>
+  <input id="busca" placeholder="Buscar..." 
+    onkeypress="if(event.key==='Enter'){buscarClick()}">
+  <button onclick="buscarClick()">Buscar</button>
 </header>
 
 <div class="urgencia">
-  ⏰ Ofertas atualizadas! Promoções podem acabar em: <span id="timer"></span>
+⏰ Atualizando ofertas automaticamente...
 </div>
 
 <div class="container" id="produtos"></div>
 
 <script>
 
-// =======================
-// 🔥 CONFIG
-// =======================
-
 const afiliado = "https://www.mercadolivre.com.br/social/m999";
 
 let buscas = [
-  "mais vendidos",
-  "ofertas tecnologia",
   "fone bluetooth",
+  "smartwatch",
   "acessórios moto",
-  "smartwatch barato"
+  "promoções",
+  "tecnologia"
 ];
 
 let indexBusca = 0;
 
-// =======================
-// ⏰ CONTADOR URGÊNCIA
-// =======================
+// função principal
+async function buscar(termo = "promoções") {
 
-let tempo = 600;
+  document.getElementById("produtos").innerHTML = "Carregando...";
 
-function atualizarTimer() {
-  let min = Math.floor(tempo / 60);
-  let sec = tempo % 60;
+  try {
 
-  document.getElementById("timer").innerHTML =
-    `${min}:${sec < 10 ? '0' : ''}${sec}`;
+    let res = await fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${termo}`);
 
-  tempo--;
+    let data = await res.json();
 
-  if (tempo >= 0) {
-    setTimeout(atualizarTimer, 1000);
-  } else {
-    tempo = 600;
-    atualizarTimer();
+    if (!data.results || data.results.length === 0) {
+      document.getElementById("produtos").innerHTML = "Nenhum produto encontrado";
+      return;
+    }
+
+    let html = "";
+
+    data.results.slice(0, 10).forEach((p, i) => {
+
+      let link = `${afiliado}?url=${encodeURIComponent(p.permalink)}`;
+
+      html += `
+      <div class="card">
+        <div class="badge">TOP ${i+1}</div>
+        <img src="${p.thumbnail}">
+        <h4>${p.title}</h4>
+        <p class="price">R$ ${p.price}</p>
+        <a class="link" href="${link}" target="_blank">COMPRAR</a>
+      </div>
+      `;
+    });
+
+    document.getElementById("produtos").innerHTML = html;
+
+  } catch (erro) {
+    document.getElementById("produtos").innerHTML =
+      "Erro ao carregar. Tentando novamente...";
   }
 }
 
-// =======================
-// ⭐ ESTRELAS
-// =======================
-
-function estrelas() {
-  return "⭐⭐⭐⭐⭐";
-}
-
-// =======================
-// 🔎 BUSCA PRINCIPAL
-// =======================
-
-function buscar(termo = "mais vendidos") {
-
-  document.getElementById("produtos").innerHTML =
-    "<p>Carregando ofertas...</p>";
-
-  fetch(`https://api.mercadolibre.com/sites/MLB/search?q=${termo}&sort=sold_quantity_desc`)
-    .then(res => res.json())
-    .then(data => {
-
-      let html = "";
-      let top10 = data.results.slice(0, 10);
-
-      top10.forEach((p, i) => {
-
-        let linkAfiliado = `${afiliado}?url=${encodeURIComponent(p.permalink)}`;
-
-        let badge = `<div class="badge">🔥 TOP ${i+1}</div>`;
-
-        html += `
-          <div class="card">
-            ${badge}
-            <img src="${p.thumbnail}" />
-            <h4>${p.title}</h4>
-            <div class="rating">${estrelas()}</div>
-            <p class="price">R$ ${p.price}</p>
-            <a class="link" href="${linkAfiliado}" target="_blank">
-              🔥 COMPRAR AGORA
-            </a>
-          </div>
-        `;
-      });
-
-      document.getElementById("produtos").innerHTML = html;
-    })
-    .catch(() => {
-      document.getElementById("produtos").innerHTML =
-        "<p>Erro ao carregar produtos.</p>";
-    });
-}
-
-// =======================
-// 🔘 BOTÃO BUSCA
-// =======================
-
+// botão
 function buscarClick() {
   let termo = document.getElementById("busca").value.trim();
-  if (termo === "") termo = "mais vendidos";
-  buscar(termo);
+  buscar(termo || "promoções");
 }
 
-// =======================
-// 🔁 AUTO ATUALIZAÇÃO
-// =======================
-
-// Atualiza produtos a cada 5 minutos
-setInterval(() => {
-  buscar();
-}, 300000);
-
-// Troca automática de nicho a cada 20s
+// 🔁 rotação automática (MAIS LENTA E ESTÁVEL)
 setInterval(() => {
   buscar(buscas[indexBusca]);
   indexBusca = (indexBusca + 1) % buscas.length;
-}, 20000);
+}, 30000); // 30 segundos
 
-// =======================
-// 🚀 INICIAR
-// =======================
-
+// iniciar
 buscar();
-atualizarTimer();
 
 </script>
 
